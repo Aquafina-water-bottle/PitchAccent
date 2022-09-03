@@ -173,7 +173,8 @@ let JPMN_PAPositions = (function () {
     // ぶ, づ, ず, ぐ, ぢ, じ have none it seems
     // don't know any other Xゅ mora other than しゅ
     let devoiced = hiraganaAndKatakana([..."つすくふぷちしきひぴ"] + ["しゅ"]);
-    let devoicedAfter = hiraganaAndKatakana([..."かきくけこさしすせそたちつてとはひふへほぱぴぷぺぽ"] + ["しゅ", "しゃ", "きゃ", "きゅ"]);
+    let devoicedAfter = hiraganaAndKatakana([..."かきくけこさしすせそたちつてとはひふへほぱぴぷぺぽ"] +
+      ["しゃ", "しょ", "しゅ", "きゃ", "きょ", "きゅ", "ちゃ", "ちょ", "ちゅ"]);
     let exceptions = hiraganaAndKatakana(["すし"]);
 
     // 祝福 should be [しゅ]く[ふ]く
@@ -181,7 +182,7 @@ let JPMN_PAPositions = (function () {
     let i = 0;
     while (i < moras.length-1) {
       if (
-          moras[i+1] === "っ"
+          (moras[i+1] === "っ" || moras[i+1] === "ッ")
           && moras[i] !== moras[i+2]
           && devoiced.includes(moras[i])
           && devoicedAfter.includes(moras[i+2])

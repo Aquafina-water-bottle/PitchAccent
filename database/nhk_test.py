@@ -166,16 +166,46 @@ def get_moras(reading: str):
     return moras
 
 
+NASAL_MAP = {
+    "か": "が",
+    "き": "ぎ",
+    "く": "ぐ",
+    "け": "げ",
+    "こ": "ご",
+    "カ": "ガ",
+    "キ": "ギ",
+    "ク": "グ",
+    "ケ": "ゲ",
+    "コ": "ゴ",
+}
+
+def apply_nasal(e: AccentEntry):
+    # Get the nasal positions
+    nasal = format_nasal_or_devoiced_positions(e.nasalsoundpos)
+
+    result = e.katakana_reading_alt
+
+    for i, char in enumerate(e.katakana_reading_alt):
+        if i in nasal:
+            assert char in NASAL_MAP
+            result = result[:i] + NASAL_MAP[char] + result[i+1:]
+
+
+
 def normalize_devoiced_or_nasal(x, moras, e):
-    if not x: # if x is empty
+    """
+    normalizes into moras rather than character
+    """
+
+    if not x:  # if x is empty
         return []
 
     formatted = sorted(format_nasal_or_devoiced_positions(x))
     result = []
 
-    #count = 0
-    #i = 0
-    #for j, mora in enumerate(moras):
+    # count = 0
+    # i = 0
+    # for j, mora in enumerate(moras):
     #    count += len(mora)
     #    if formatted[i] == count:
     #        result.append(j)
@@ -201,10 +231,8 @@ def normalize_devoiced_or_nasal(x, moras, e):
         if leave:
             break
 
-
     if e.kanjiexpr == "生活改良普及員":
         print(result, formatted, e.simplify())
-
 
     assert i == len(formatted), (formatted, moras, result, i, e.simplify())
     return result
@@ -251,10 +279,20 @@ class NhkDb(AccDbManager):
         temp_dict = {}
 
         ignored = {
-                "アイスコーヒー",
-                }
+            "アイスコーヒー",
+            #"青息吐息",
 
-        #count = 0
+            # TODO what's the rule?
+            "秋草", # あ[き]くさ -- あき(く)さ
+
+            # TODO drop?
+            "秋鯖", # あ[き]さば -- あきさば
+
+            "空き室", # あ[き]しつ あき(し)つ
+        }
+
+        # count = 0
+        START = 670
         with open(cls.accent_database, "r", encoding="utf-8") as f:
             for i, line in enumerate(f):
                 e = make_accent_entry(line)
@@ -262,11 +300,17 @@ class NhkDb(AccDbManager):
                 if e.kanjiexpr in ignored:
                     continue
 
-                expected = normalize_devoiced_or_nasal(e.devoiced_pos, get_moras(e.katakana_reading), e)
-                #y = os.system(f'node ./format.js <<< "{e.katakana_reading_alt}"')
-                #y = subprocess.check_output(["./what.sh", e.katakana_reading_alt])
-                simulated_bytes = subprocess.check_output(["node",  "./format.js", e.katakana_reading])
-                #y = os.system(f'node ./format.js <<< "{e.katakana_reading_alt}"')
+                if i < START:
+                    continue
+
+                expected = normalize_devoiced_or_nasal(
+                    e.devoiced_pos, get_moras(e.katakana_reading), e
+                )
+
+                simulated_bytes = subprocess.check_output(
+                    ["node", "./format.js", e.katakana_reading]
+                )
+                # y = os.system(f'node ./format.js <<< "{e.katakana_reading_alt}"')
 
                 simulated_str = simulated_bytes.decode("utf-8").strip()
                 if not simulated_str:
@@ -274,44 +318,9 @@ class NhkDb(AccDbManager):
                 else:
                     simulated = [int(x) for x in simulated_str.split(",")]
                 assert simulated == expected, (i, simulated, expected, e.simplify())
-                #count += 1
-                #if count > 20:
+                # count += 1
+                # if count > 20:
                 #    return
-
-                #if e.devoiced_pos and "ュ" in e.katakana_reading_alt:
-                #    x = normalize_devoiced_or_nasal(e.devoiced_pos, get_moras(e.katakana_reading_alt))
-                #    print(e.simplify(), x, format_nasal_or_devoiced_positions(e.devoiced_pos))
-                #    count += 1
-                #    if count > 20:
-                #        return
-
-                #if (
-                #    "ュ" in e.katakana_reading_alt
-                #    and format_nasal_or_devoiced_positions(e.devoiced_pos)
-                #):
-                #    print(e.simplify())
-                #    count += 1
-                #    if count > 20:
-                #        return
-
-                # print(e)
-
-            # entries: List[AccentEntry] = [make_accent_entry(line) for line in f]
-
-        # for entry in entries:
-        #    # A tuple holding both the spelling in katakana, and the katakana with pitch/accent markup
-        #    value = (entry.katakana_reading, format_entry(entry))
-
-        #    # Add expressions for both
-        #    for key in (entry.nhk, entry.kanjiexpr):
-        #        temp_dict[key] = temp_dict.get(key, [])
-        #        if value not in temp_dict[key]:
-        #            temp_dict[key].append(value)
-
-        # with open(dest_path, 'w', encoding="utf-8") as of:
-        #    for word in temp_dict.keys():
-        #        for katakana, pitch_html in temp_dict[word]:
-        #            of.write(f"{word}\t{katakana}\t{pitch_html}\n")
 
     @classmethod
     def gamer(cls):
