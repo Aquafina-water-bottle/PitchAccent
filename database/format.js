@@ -120,7 +120,8 @@ let JPMN_PAPositions = (function () {
   ///  return result;
   ///}
 
-  function hiraganaAndKatakana(obj) {
+  function kanas(obj) {
+    /// takes hiragana, and converts to hiragana + katakana
     if (Array.isArray(obj)) {
       result = obj.slice(); // shallow copy
       for (let i = 0; i < result.length; i++) {
@@ -172,10 +173,10 @@ let JPMN_PAPositions = (function () {
     // ぴ: 鉛筆
     // ぶ, づ, ず, ぐ, ぢ, じ have none it seems
     // don't know any other Xゅ mora other than しゅ
-    let devoiced = hiraganaAndKatakana([..."つすくふぷちしきひぴ"] + ["しゅ"]);
-    let devoicedAfter = hiraganaAndKatakana([..."かきくけこさしすせそたちつてとはひふへほぱぴぷぺぽ"] +
+    let devoiced = kanas([..."つすくふぷちしきひぴ"] + ["しゅ"]);
+    let devoicedAfter = kanas([..."かきくけこさしすせそたちつてとはひふへほぱぴぷぺぽ"] +
       ["しゃ", "しょ", "しゅ", "きゃ", "きょ", "きゅ", "ちゃ", "ちょ", "ちゅ"]);
-    let exceptions = hiraganaAndKatakana(["すし"]);
+    let exceptions = kanas(["すし"]);
 
     // 祝福 should be [しゅ]く[ふ]く
 
@@ -183,10 +184,15 @@ let JPMN_PAPositions = (function () {
     while (i < moras.length-1) {
       if (
           (moras[i+1] === "っ" || moras[i+1] === "ッ")
-          && moras[i] !== moras[i+2]
-          && devoiced.includes(moras[i])
-          && devoicedAfter.includes(moras[i+2])
-          && !exceptions.includes(moras[i] + moras[i+2])
+          && moras[i] !== moras[i+2]                      // not duplicate
+          && devoiced.includes(moras[i])                  // beginning
+          && devoicedAfter.includes(moras[i+2])           // end
+          && !exceptions.includes(moras[i] + moras[i+2])  // general exceptions
+          && !(
+            i === 1 && kanas("あ").includes(moras[i-1])
+            && kanas("き").includes(moras[i])
+            && kanas("くし").includes(moras[i+2])
+          )
         ) {
         result.push(i);
 
@@ -195,9 +201,14 @@ let JPMN_PAPositions = (function () {
 
       } else if (
           devoiced.includes(moras[i])
-          && moras[i] !== moras[i+1]
-          && devoicedAfter.includes(moras[i+1])
-          && !exceptions.includes(moras[i] + moras[i+1])
+          && moras[i] !== moras[i+1]                      // not duplicate
+          && devoicedAfter.includes(moras[i+1])           // end
+          && !exceptions.includes(moras[i] + moras[i+1])  // general exceptions
+          && !(
+            i === 1 && kanas("あ").includes(moras[i-1])
+            && kanas("き").includes(moras[i])
+            && kanas("くし").includes(moras[i+1])
+          )
         ) {
         result.push(i);
 

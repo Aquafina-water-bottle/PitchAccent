@@ -182,13 +182,17 @@ NASAL_MAP = {
 def apply_nasal(e: AccentEntry):
     # Get the nasal positions
     nasal = format_nasal_or_devoiced_positions(e.nasalsoundpos)
+    if not nasal:
+        return e.katakana_reading_alt
 
-    result = e.katakana_reading_alt
+    result = list(e.katakana_reading_alt)
 
     for i, char in enumerate(e.katakana_reading_alt):
-        if i in nasal:
-            assert char in NASAL_MAP
-            result = result[:i] + NASAL_MAP[char] + result[i+1:]
+        if i+1 in nasal:
+            assert char in NASAL_MAP, (char, i, e.katakana_reading_alt)
+            result[i] = NASAL_MAP[char]
+
+    return "".join(result)
 
 
 
@@ -283,16 +287,26 @@ class NhkDb(AccDbManager):
             #"青息吐息",
 
             # TODO what's the rule?
-            "秋草", # あ[き]くさ -- あき(く)さ
+            #"秋草", # あ[き]くさ -- あき(く)さ
 
-            # TODO drop?
+            #"空き室", # あ[き]しつ あき(し)つ
+
             "秋鯖", # あ[き]さば -- あきさば
 
-            "空き室", # あ[き]しつ あき(し)つ
+            #"悪質", # (765, [1], [2], AccentEntrySimplified(NID='773', ID='685', katakana_reading='アクシツ', katakana_reading_alt='アクシツ', kanjiexpr='悪質', devoiced_pos='3', nasalsoundpos='', accent='111'))
+
+
+            # TODO exception to あ rule?
+            # (648, [], [3], AccentEntrySimplified(NID='656', ID='579', katakana_reading='アキアキスル', katakana_reading_alt='アキアキスル', kanjiexpr='飽き飽きする', devoiced_pos='4', nasalsoundpos='', accent='12000'))
+
+            # (651, [], [1], AccentEntrySimplified(NID='659', ID='582', katakana_reading='アキカゼ', katakana_reading_alt='アキカゼ', kanjiexpr='秋風', devoiced_pos='2', nasalsoundpos='', accent='200'))
+
+
         }
 
         # count = 0
-        START = 670
+        START = 647
+        #START = 0
         with open(cls.accent_database, "r", encoding="utf-8") as f:
             for i, line in enumerate(f):
                 e = make_accent_entry(line)
@@ -303,12 +317,14 @@ class NhkDb(AccDbManager):
                 if i < START:
                     continue
 
+                with_nasal = apply_nasal(e)
+
                 expected = normalize_devoiced_or_nasal(
-                    e.devoiced_pos, get_moras(e.katakana_reading), e
+                    e.devoiced_pos, get_moras(with_nasal), e
                 )
 
                 simulated_bytes = subprocess.check_output(
-                    ["node", "./format.js", e.katakana_reading]
+                    ["node", "./format.js", with_nasal]
                 )
                 # y = os.system(f'node ./format.js <<< "{e.katakana_reading_alt}"')
 
