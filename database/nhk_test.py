@@ -19,6 +19,7 @@
 # Any modifications to this file must keep this entire header intact.
 
 import re
+import subprocess
 
 # from typing import NamedTuple
 from dataclasses import dataclass
@@ -249,12 +250,33 @@ class NhkDb(AccDbManager):
         """Build the derived database from the original database and save it as *.csv"""
         temp_dict = {}
 
-        count = 0
+        ignored = {
+                "アイスコーヒー",
+                }
+
+        #count = 0
         with open(cls.accent_database, "r", encoding="utf-8") as f:
-            for line in f:
+            for i, line in enumerate(f):
                 e = make_accent_entry(line)
 
-                x = normalize_devoiced_or_nasal(e.devoiced_pos, get_moras(e.katakana_reading_alt), e)
+                if e.kanjiexpr in ignored:
+                    continue
+
+                expected = normalize_devoiced_or_nasal(e.devoiced_pos, get_moras(e.katakana_reading), e)
+                #y = os.system(f'node ./format.js <<< "{e.katakana_reading_alt}"')
+                #y = subprocess.check_output(["./what.sh", e.katakana_reading_alt])
+                simulated_bytes = subprocess.check_output(["node",  "./format.js", e.katakana_reading])
+                #y = os.system(f'node ./format.js <<< "{e.katakana_reading_alt}"')
+
+                simulated_str = simulated_bytes.decode("utf-8").strip()
+                if not simulated_str:
+                    simulated = []
+                else:
+                    simulated = [int(x) for x in simulated_str.split(",")]
+                assert simulated == expected, (i, simulated, expected, e.simplify())
+                #count += 1
+                #if count > 20:
+                #    return
 
                 #if e.devoiced_pos and "ュ" in e.katakana_reading_alt:
                 #    x = normalize_devoiced_or_nasal(e.devoiced_pos, get_moras(e.katakana_reading_alt))

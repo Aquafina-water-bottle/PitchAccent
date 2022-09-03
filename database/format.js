@@ -1,3 +1,7 @@
+function _debug(message) {
+  //console.log(message);
+}
+
 // copied/pasted directly from yomichan
 // https://github.com/FooSoft/yomichan/blob/master/ext/js/language/sandbox/japanese-util.js
 // I have no idea what is going on tbh but it seems to work
@@ -128,6 +132,36 @@ let JPMN_PAPositions = (function () {
     return obj + convertHiraganaToKatakana(obj);
   }
 
+  // I think the plural of mora is mora, but oh well
+  function getMoras(readingKana) {
+    const ignoredKana = "ょゅゃョュャ";
+    const len = [...readingKana].length;
+
+    if (len === 0) {
+      _debug("(JPMN_PAPositions) Reading has length of 0?");
+      return;
+    }
+
+
+    let moras = [];
+
+    let currentPos = 0;
+    while (currentPos < len) {
+      // checks next kana to see if it's a combined mora (i.e. きょ)
+      // ignoredKana.includes(...) <=> ... in ignoredKana
+      if (currentPos !== (len-1) && ignoredKana.includes(readingKana[currentPos+1])) {
+        moras.push(readingKana.substring(currentPos, currentPos+2));
+        currentPos++;
+      } else {
+        moras.push(readingKana[currentPos])
+      }
+      currentPos++;
+    }
+
+    _debug(`(JPMN_PAPositions) moras: ${moras.join(", ")}`);
+    return moras;
+  }
+
   // returns list of indices that contain devoiced mora
   function getDevoiced(moras) {
     let result = [];
@@ -139,7 +173,7 @@ let JPMN_PAPositions = (function () {
     // ぶ, づ, ず, ぐ, ぢ, じ have none it seems
     // don't know any other Xゅ mora other than しゅ
     let devoiced = hiraganaAndKatakana([..."つすくふぷちしきひぴ"] + ["しゅ"]);
-    let devoicedAfter = hiraganaAndKatakana("かきくけこさしすせそたちつてとはひふへほぱぴぷぺぽ");
+    let devoicedAfter = hiraganaAndKatakana([..."かきくけこさしすせそたちつてとはひふへほぱぴぷぺぽ"] + ["しゅ", "しゃ", "きゃ", "きゅ"]);
     let exceptions = hiraganaAndKatakana(["すし"]);
 
     // 祝福 should be [しゅ]く[ふ]く
@@ -147,7 +181,8 @@ let JPMN_PAPositions = (function () {
     let i = 0;
     while (i < moras.length-1) {
       if (
-        moras[i+1] === "っ"
+          moras[i+1] === "っ"
+          && moras[i] !== moras[i+2]
           && devoiced.includes(moras[i])
           && devoicedAfter.includes(moras[i+2])
           && !exceptions.includes(moras[i] + moras[i+2])
@@ -159,6 +194,7 @@ let JPMN_PAPositions = (function () {
 
       } else if (
           devoiced.includes(moras[i])
+          && moras[i] !== moras[i+1]
           && devoicedAfter.includes(moras[i+1])
           && !exceptions.includes(moras[i] + moras[i+1])
         ) {
@@ -209,31 +245,7 @@ let JPMN_PAPositions = (function () {
   function buildReadingSpan(pos, readingKana) {
 
     // creates div
-    const ignoredKana = "ょゅゃョュャ";
-    const len = [...readingKana].length;
-    if (len === 0) {
-      _debug("(JPMN_PAPositions) Reading has length of 0?");
-      return;
-    }
-
-    // I think the plural of mora is mora, but oh well
-    let moras = [];
-
-    let currentPos = 0;
-    while (currentPos < len) {
-      // checks next kana to see if it's a combined mora (i.e. きょ)
-      // ignoredKana.includes(...) <=> ... in ignoredKana
-      if (currentPos !== (len-1) && ignoredKana.includes(readingKana[currentPos+1])) {
-        moras.push(readingKana.substring(currentPos, currentPos+2));
-        currentPos++;
-      } else {
-        moras.push(readingKana[currentPos])
-      }
-      currentPos++;
-    }
-
-    _debug(`(JPMN_PAPositions) moras: ${moras.join(", ")}`);
-
+    let moras = getMoras(readingKana);
     // special case: 0 and length of moras === 1 (nothing needs to be done)
     if (pos === 0 && moras.length === 1) {
       return readingKana;
@@ -292,28 +304,62 @@ let JPMN_PAPositions = (function () {
   }
 
   my.run = addPosition;
+  my.getMoras = getMoras;
+  my.getDevoiced = getDevoiced;
   return my;
 
 }());
 
 
 
-const readline = require('readline');
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
+//const readline = require('readline');
+//const rl = readline.createInterface({
+//  input: process.stdin,
+//  output: process.stdout
+//});
+//
+//rl.question('What is your name ? ', function (name) {
+//  rl.question('Where do you live ? ', function (country) {
+//    console.log(`${name}, is a citizen of ${country}`);
+//    rl.close();
+//  });
+//});
+//
+//rl.on('close', function () {
+//  console.log('\nBYE BYE !!!');
+//  process.exit(0);
+//});
 
-rl.question('What is your name ? ', function (name) {
-  rl.question('Where do you live ? ', function (country) {
-    console.log(`${name}, is a citizen of ${country}`);
-    rl.close();
-  });
-});
 
-rl.on('close', function () {
-  console.log('\nBYE BYE !!!');
-  process.exit(0);
-});
 
+//const readline = require('readline');
+//const rl = readline.createInterface({
+//  input: process.stdin,
+//  //output: process.stdout
+//});
+//
+//rl.question('', function (reading) {
+//
+//  let moras = JPMN_PAPositions.getMoras(reading);
+//  console.log(`[${JPMN_PAPositions.getDevoiced(moras)}]`);
+//  rl.close();
+//
+//  //rl.question('', function (position) {
+//  //  rl.question('', function (kanji) {
+//  //    console.log(`${kanji}`);
+//  //    rl.close();
+//  //  });
+//  //});
+//});
+//
+//rl.on('close', function () {
+//  //console.log('\nBYE BYE !!!');
+//  process.exit(0);
+//});
+
+
+
+
+let moras = JPMN_PAPositions.getMoras(process.argv[2]);
+console.log(`${JPMN_PAPositions.getDevoiced(moras)}`);
 
